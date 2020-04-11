@@ -1,6 +1,7 @@
 from .base_producer import BaseProducer
 import pika
 import logging
+import time
 
 log = logging.getLogger(__name__)
 
@@ -19,11 +20,18 @@ class RMQProducer(BaseProducer):
     def publish(self, message):
         log.info("Start publish")
         credentials = pika.PlainCredentials(self.login, self.password)
-        connection = pika.BlockingConnection(pika.ConnectionParameters(
-            host=self.host,
-            port=self.port,
-            credentials=credentials
-        ))
+        # trying to reconnect until will be connected
+        while (True):
+            try:
+                connection = pika.BlockingConnection(pika.ConnectionParameters(
+                    host=self.host,
+                    port=self.port,
+                    credentials=credentials
+                ))
+                break
+            except pika.exceptions.ConnectionClosed as E:
+                print("Connection has not been established. Trying again in 30 seconds")
+                time.sleep(30)
         channel = connection.channel()
         channel.queue_declare(queue=self.queue, durable=True)
         channel.basic_publish(exchange='',

@@ -26,11 +26,17 @@ class RMQConsumer(BaseConsumer):
         self.task_manager = task_manager
         # init rmq channel
         credentials = pika.PlainCredentials(self.login, self.password)
-        self.connection = pika.BlockingConnection(pika.ConnectionParameters(
-            host=self.host,
-            port=self.port,
-            credentials=credentials
-        ))
+        while (True):
+            try:
+                self.connection = pika.BlockingConnection(pika.ConnectionParameters(
+                    host=self.host,
+                    port=self.port,
+                    credentials=credentials
+                ))
+                break
+            except pika.exceptions.ConnectionClosed as E:
+                print("Connection has not been established. Trying again in 30 seconds")
+                time.sleep(30)
         self.channel = self.connection.channel()
         self.channel.queue_declare(queue=self.queue, durable=True)
         self.channel.basic_qos(prefetch_count=1)
